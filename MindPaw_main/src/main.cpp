@@ -3,13 +3,13 @@
 //CodeVersion:V2.0  (MindPaw 2.0 — 流式 3D 重建感知层)
 //---------------导入库--------------------------
 #include <Arduino.h>
-#include <Servo.h>
+#include "board_config.h"
+#include "servo_output.h"
 #include <U8g2lib.h>
 #include <Wire.h>
 #include <FS.h>
-#include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
-#include <ESP8266HTTPClient.h>
+#include "platform_network.h"
 #include <NTPClient.h>
 #include <ArduinoJson.h>
 #include <WiFiUdp.h>
@@ -25,14 +25,10 @@
 #include "multimodal_fusion.h"
 #include "streaming_recon.h"    // 2.0: 流式 3D 重建感知层客户端
 //---------------按键部分--------------------------
-#define BUTTON_PIN 2 // GPIO2 引脚 (D4)
-#define BUTTON_PIN2 15
+#define BUTTON_PIN MP_BUTTON
 volatile bool buttonPressed = false;     // 按键标志
-volatile bool buttonPressed2 = false;    // 按键标志
 unsigned long lastPressTime = 0;         // 上次按键时间
 const unsigned long debounceDelay = 50;  // 消抖时间 (ms)
-unsigned long lastPressTime2 = 0;        // 上次按键时间
-const unsigned long debounceDelay2 = 50; // 消抖时间 (ms)
 //---------------ADC部分--------------------------
 const float voltageDividerRatio = 8.4; // 分压比（8.4倍缩小）
 const float minVoltage = 6.4; // 电压为0%时
@@ -41,16 +37,16 @@ const int numSamples = 10;//定义采用次数
 float batteryVoltage = 0; // 计算电池电压
 int batteryPercentage = 0;//电量百分比
 //---------------舵机部分--------------------------
-Servo servo1;//声明舵机1
-Servo servo2;//声明舵机2
-Servo servo3;//声明舵机3
-Servo servo4;//声明舵机4
-int engine1 = 14;                 // 舵机1引脚
-int engine2 = 16;                 // 舵机2引脚
-int engine3 = 12;                 // 舵机3引脚
-int engine4 = 13;                 // 舵机4引脚
+MindPawServo servo1;//声明舵机1
+MindPawServo servo2;//声明舵机2
+MindPawServo servo3;//声明舵机3
+MindPawServo servo4;//声明舵机4
+int engine1 = 0; // PCA9685 channels, not GPIOs
+int engine2 = 1;
+int engine3 = 2;
+int engine4 = 3;
 //---------------屏幕部分--------------------------
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/5, /* data=*/4); // 使用SSD1306屏幕驱动,时钟引脚5，数据引脚4
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/MP_SCL, /* data=*/MP_SDA); // SSD1306 uses the selected board I2C pins
 //---------------网络部分--------------------------
 const char *ssid = "MindPaw";//WIFI名称
 const char *password = "mindpaw1234"; // AP 密码 (建议连接后修改)
@@ -118,7 +114,7 @@ void handleGestureNN(const GestureNNResult& nnResult);
 //---------------文件系统部分--------------------------
 const char *ssidFile = "/ssid.json";//配置存储文件名及路径
 //---------------按键中断部分--------------------------
-void ICACHE_RAM_ATTR handleButtonPress()
+void MP_ISR_ATTR handleButtonPress()
 {
 
     unsigned long currentTime = millis();// 获取当前系统运行时间（单位：毫秒）
@@ -127,12 +123,6 @@ void ICACHE_RAM_ATTR handleButtonPress()
     {
         buttonPressed = true;     // 设置按钮1按下标志位
         lastPressTime = currentTime; // 更新按钮1的最后有效按下时间
-    }
-    unsigned long currentTime2 = millis();// 获取当前时间
-    if (currentTime2 - lastPressTime2 > debounceDelay2)// 检查按钮2的去抖条件（使用独立的去抖时间和记录变量）
-    {
-        buttonPressed2 = true;    // 设置按钮2按下标志位
-        lastPressTime2 = currentTime2; // 更新按钮2的最后有效按下时间
     }
 }
 //---------------配置页面路由--------------------------
@@ -1314,7 +1304,11 @@ float getAverageAdcVoltage()
     // 多次采样
     for (int i = 0; i < numSamples; i++)
     {
-        totalAdcValue += analogRead(A0); // 读取 ADC 数据
+#if defined(ESP32)
+        totalAdcValue += analogReadMilliVolts(MP_BATTERY_ADC);
+#else
+        totalAdcValue += analogRead(MP_BATTERY_ADC);
+#endif
         delay(10);                       // 每次采样间隔 10ms
     }
 
@@ -1322,7 +1316,11 @@ float getAverageAdcVoltage()
     float averageAdcValue = totalAdcValue / (float)numSamples;
 
     // 将 ADC 值转换为电压
-    return (averageAdcValue / 1023.0) * 1.0; // ESP8266 的参考电压为 1.0V
+#if defined(ESP32)
+    return averageAdcValue / 1000.0f;
+#else
+    return (averageAdcValue / 1023.0) * 1.0;
+#endif
 }
 
 // 计算电池电量百分比的函数
@@ -1345,6 +1343,35 @@ void serialListen(){
     // 处理接收到的字符串
     Serial.print("Received: ");
     Serial.println(receivedString);
+
+    // Diagnostics run in loop, never concurrently in an async web callback.
+    if (receivedString == "camera jpeg" || receivedString == "camera gray") {
+        if (!cameraModule.isAvailable()) {
+            Serial.println("CAMERA_ERROR unavailable");
+            return;
+        }
+        if (receivedString == "camera gray") {
+            if (!cameraModule.captureGrayscale(gestureFrameBuffer)) {
+                Serial.println("CAMERA_ERROR capture");
+                return;
+            }
+            Serial.println("CAMERA_GRAY 1200");
+            Serial.write(gestureFrameBuffer, sizeof(gestureFrameBuffer));
+        } else {
+            uint8_t* frame = static_cast<uint8_t*>(malloc(RECON_MAX_JPEG_BYTES));
+            size_t length = 0;
+            if (!frame || !cameraModule.captureJpeg(frame, RECON_MAX_JPEG_BYTES, length)) {
+                free(frame);
+                Serial.println("CAMERA_ERROR capture_or_capacity");
+                return;
+            }
+            Serial.printf("CAMERA_JPEG %u\n", unsigned(length));
+            Serial.write(frame, length);
+            free(frame);
+        }
+        Serial.println();
+        return;
+    }
 
     // 支持 "ask <文本>" 命令 — 发送给 AI Agent
     if (receivedString.startsWith("ask ")) {
@@ -1452,6 +1479,8 @@ void serialListen(){
 }
 void setup()
 {
+Serial.begin(115200);
+Wire.begin(MP_SDA, MP_SCL);
 u8g2.begin();
 u8g2.setDisplayRotation(U8G2_R2);
 // OLED 显示初始化与按钮中断配置
@@ -1472,11 +1501,7 @@ pinMode(BUTTON_PIN, INPUT_PULLUP);
 // 配置下降沿中断（物理按下时产生低电平）
 attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, FALLING);
 
-// 按钮2配置（通常对应GPIO15）
-// 硬件要求：需外接上拉电阻，按钮接3.3V触发
-pinMode(BUTTON_PIN2, INPUT);  // 无内部上拉模式
-// 配置上升沿中断（物理按下时产生高电平）
-attachInterrupt(digitalPinToInterrupt(BUTTON_PIN2), handleButtonPress, RISING);
+// GPIO15 is camera CS; no second button on this pin.
 //启用SPIFFS文件系统
     SPIFFS.begin();
     servo1.attach(engine1, 500, 2500); // 配置舵机PWM，500µs=0度，2500µs=180度
@@ -1487,8 +1512,6 @@ attachInterrupt(digitalPinToInterrupt(BUTTON_PIN2), handleButtonPress, RISING);
     servo3.write(90);
     servo2.write(90);
     servo4.write(90);
-    // 初始化串口
-    Serial.begin(115200);
 
     //---------------初始化新模块--------------------------
     // 初始化扬声器 (开机音效)
@@ -1675,11 +1698,6 @@ void loop()
     {
         buttonPressed = false; // 清除按键标志
         front();
-    }
-    if (buttonPressed2)
-    {
-        buttonPressed2 = false; // 清除按键标志
-        back();
     }
     if (emojiState != prevEmojiState)
     {

@@ -18,7 +18,8 @@
 // 或者用功放模块 (MAX98357/PAM8403):
 //   GPIO16 ──▶ 功放 IN   功放 OUT+/- ──▶ 喇叭
 //============================================================
-#define SPEAKER_PIN  D0   // GPIO16 — 扬声器控制引脚
+#include "board_config.h"
+#define SPEAKER_PIN MP_SPEAKER
 
 // 音符频率定义 (Hz)
 #define NOTE_B0  31

@@ -96,6 +96,9 @@ Speaker::Speaker(uint8_t pin) : _pin(pin) {
 
 // ==================== 初始化 ====================
 void Speaker::begin() {
+#if defined(ESP32)
+    setToneChannel(7); // Camera XCLK owns LEDC channel/timer 0.
+#endif
     pinMode(_pin, OUTPUT);
     digitalWrite(_pin, LOW);
 }

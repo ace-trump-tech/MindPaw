@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "firmware_project": "MindPaw_main",
-  "board": "nodemcuv2 / ESP8266",
+  "board": "ESP8266 / ESP32-S3-DevKitC-1 N8R8",
   "source_of_truth": {
     "firmware": "MindPaw_main/platformio.ini",
-    "wiring": "MindPaw_main/PIN_WIRING.md",
+    "wiring": "Docs/10_Camera_Profiles.md",
     "schematic": "SCH&PCB/MindPaw_SCH&PCB.epro2",
     "assembly": "Docs/05_Assembly_Guide.md"
   },
@@ -32,6 +32,22 @@
     "ai-infra/recon/mock_recon.py",
     "ai-infra/recon/schemas.py",
     "ai-infra/recon/tests/test_pipeline.py",
-    "ai-infra/recon/README.md"
-  ]
+    "ai-infra/recon/README.md",
+    "Docs/10_Camera_Profiles.md",
+    "MindPaw_main/src/board_config.h",
+    "MindPaw_main/src/servo_output.cpp",
+    "MindPaw_main/tools/capture_camera.py"
+  ],
+  "hardware_validation": "pending: both camera profiles and PCA9685 wiring require physical acceptance; original PCB is legacy",
+  "profiles": {
+    "nodemcuv2": {
+      "camera": "ArduCAM Mini 2MP Plus OV2640 SPI/FIFO",
+      "servos": "PCA9685 0x40 channels 0-3"
+    },
+    "esp32s3_dvp": {
+      "camera": "OV2640 DVP 3.3V-compatible breakout, no FIFO",
+      "board": "ESP32-S3-DevKitC-1 N8R8",
+      "servos": "PCA9685 0x40 channels 0-3"
+    }
+  }
 }

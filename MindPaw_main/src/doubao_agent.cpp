@@ -264,7 +264,7 @@ bool DoubaoAgent::ask(const String& userText, AgentResponse& response) {
         _http.addHeader("Content-Type", "application/json");
         _http.addHeader("Authorization", "Bearer " + _apiKey);
 
-        httpCode = _http.POST((const uint8_t*)_requestBuf, strlen(_requestBuf));
+        httpCode = _http.POST((uint8_t*)_requestBuf, strlen(_requestBuf));
 
         if (httpCode == 200) {
             // 成功

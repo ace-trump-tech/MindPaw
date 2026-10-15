@@ -6,7 +6,7 @@
 #define MOTION_EMOTION_H
 
 #include <Arduino.h>
-#include <Servo.h>
+#include "servo_output.h"
 #include "doubao_config.h"
 
 // 正弦振荡参数
@@ -22,7 +22,7 @@ class MotionEmotion {
 public:
     MotionEmotion();
 
-    void attach(Servo& s1, Servo& s2, Servo& s3, Servo& s4);
+    void attach(MindPawServo& s1, MindPawServo& s2, MindPawServo& s3, MindPawServo& s4);
 
     // 触发情感动作 (非阻塞)
     void trigger(EmotionAction action, uint8_t repeat = 1);
@@ -43,7 +43,7 @@ public:
     void setEmotionalIntensity(float pleasure, float arousal);
 
 private:
-    Servo* _s[4];
+    MindPawServo* _s[4];
     bool _attached;
     bool _isPlaying;
 

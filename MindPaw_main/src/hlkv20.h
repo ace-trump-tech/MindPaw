@@ -19,17 +19,14 @@
 #define HLKV20_H
 
 #include <Arduino.h>
+#include "board_config.h"
+#if defined(ESP8266)
 #include <SoftwareSerial.h>
+#else
+#include <HardwareSerial.h>
+#endif
 
-// ==================== 引脚配置 ====================
-// HLK-V20 TX → ESP8266 RX 引脚 (SoftwareSerial)
-// 推荐: D2 (GPIO4) — 与 OLED SDA 共用一个引脚?
-// 不, 选空闲引脚: D2 已用于 OLED, 所以用 D1 或 D3
-// 这里使用 D1 (GPIO5) — 与 OLED SCL 复用?
-// 还是用 D0 (GPIO16)?
-// HLK-V20 只在识别触发时才发数据 (1-2 字节/秒)
-// 最佳选择: D3 (GPIO0) — 默认上拉 HIGH ✓ 与 LD3320_CS 释放后重合
-#define HLKV20_RX_PIN D3        // GPIO0 — HLK-V20 TX 接此引脚
+#define HLKV20_RX_PIN MP_VOICE_RX
 
 // ==================== 语音命令枚举 (与 LD3320 兼容) ====================
 enum VoiceCommand : uint8_t {
@@ -95,7 +92,11 @@ public:
     void setMapping(const VoiceMapping* mapping, uint8_t count);
 
 private:
+#if defined(ESP8266)
     SoftwareSerial* _serial;
+#else
+    HardwareSerial* _serial;
+#endif
     bool _initialized;
     bool _debug;
     VoiceCommand _lastCmd;

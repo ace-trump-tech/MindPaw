@@ -6,8 +6,7 @@
 #define DOUBAO_AGENT_H
 
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+#include "platform_network.h"
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include "doubao_config.h"

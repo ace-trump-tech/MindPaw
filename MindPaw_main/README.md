@@ -1,15 +1,17 @@
 # MindPaw_main：初学者复现路径
 
-这里是 MindPaw 的 ESP8266 固件和网页控制端。目标是让你先把机器狗完整跑起来：运动、OLED、网页控制、语音、摄像头手势和可选 AI 对话都保留在同一份固件中。
+这里是 MindPaw 的 ESP8266 / ESP32-S3 固件和网页控制端。目标是让你先把机器狗完整跑起来：运动、OLED、网页控制、语音、摄像头手势和可选 AI 对话都保留在同一份固件中。
 
 `ai-infra` 不是本路径的必需组件。第一次复现建议直接使用 ESP8266 直连豆包；完成基础复现后，再进入 [AI Infra 研究路径](../ai-infra/README.md)。
 
 ## 1. 先选硬件范围
 
+先阅读 [双摄像头方案](../Docs/10_Camera_Profiles.md)。A 是 ESP8266 + ArduCAM Mini 2MP Plus；B 是 ESP32-S3 N8R8 + DVP 无 FIFO 模块。两者不可混用接线；新增配置尚待实物验收。
+
 | 目标 | 最少硬件 | 可以体验 |
 |------|---------|---------|
-| 基础复现 | ESP12F/NodeMCU、4 个舵机、OLED | 运动、表情、网页控制 |
-| 完整 Demo | 基础复现 + HLK-V20 + 扬声器 + OV2640 | 语音、声音、手势、AI 对话 |
+| 基础复现 | 所选主控、PCA9685、4 个舵机、OLED | 运动、表情、网页控制 |
+| 完整 Demo | 基础复现 + HLK-V20 + 扬声器 + 对应方案的 OV2640 模块 | 语音、声音、手势、AI 对话 |
 | 只验证软件 | NodeMCU + USB-TTL | 编译、网页和部分串口功能 |
 
 硬件接线、PCB 和电源注意事项见 [SCH&PCB/README.md](../SCH&PCB/README.md) 与 [PIN_WIRING.md](PIN_WIRING.md)。
@@ -28,12 +30,13 @@
 在本目录执行：
 
 ```bash
-pio run
-pio run -t upload
-pio run -t uploadfs
+# A；方案 B 将 nodemcuv2 替换为 esp32s3_dvp
+pio run -e nodemcuv2
+pio run -e nodemcuv2 -t upload
+pio run -e nodemcuv2 -t uploadfs
 ```
 
-首次烧录必须执行 `uploadfs`，否则网页文件不存在。烧录时 GPIO0 接 GND；完成后断开 GPIO0，再按 RST。串口监视器使用 `115200`。
+首次烧录必须执行 `uploadfs`，否则网页文件不存在。ESP8266 烧录时 GPIO0 接 GND；完成后断开 GPIO0，再按 RST。串口监视器使用 `115200`。
 
 看到以下信息，说明固件基本启动：
 
@@ -53,7 +56,7 @@ pio run -t uploadfs
 逐个接模块可以快速定位问题，建议顺序是：
 
 ```text
-电源 → ESP12F → OLED → 舵机 → 网页 → HLK-V20 → 扬声器 → OV2640
+电源 → 所选主控 → OLED → PCA9685 → 舵机 → 网页 → HLK-V20 → 扬声器 → OV2640
 ```
 
 ## 5. 配置 AI 对话（可选）
@@ -93,7 +96,7 @@ pio run -t uploadfs
 | 舵机抖动/重启 | 舵机使用独立 5V 供电并与 ESP 共地 |
 | OLED 不亮 | 检查 GPIO4=SDA、GPIO5=SCL 和 I2C 上拉 |
 | 语音没反应 | HLK-V20 是否已烧录 CMD1-CMD22，确认 TX 接 GPIO0 |
-| 摄像头失败 | 检查 GPIO15 CS、SPI 共享串联电阻和 3.3V 供电 |
+| 摄像头失败 | 按所选方案检查完整接线、供电与摄像头初始化日志 |
 | AI 未配置 | 确认 API Key、Endpoint ID 和 WiFi STA 已连接 |
 | Gateway 连接失败 | 网关与设备 STA 网络是否互通，地址是否包含 `/v1/chat/completions` |
 
