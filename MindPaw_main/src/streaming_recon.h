@@ -13,7 +13,7 @@
 #define STREAMING_RECON_H
 
 #include <Arduino.h>
-#include <ESP8266HTTPClient.h>
+#include "platform_network.h"
 #include <WiFiClient.h>
 
 // 默认推流配置
@@ -83,7 +83,7 @@ private:
     void _parseHazardJson(const String& body);
 
     static String _buildBoundary();
-    static String _buildMultipartBody(const String& boundary,
+    String _buildMultipartBody(const String& boundary,
                                       unsigned long frameId,
                                       const uint8_t* jpegBytes, size_t jpegLen);
 };

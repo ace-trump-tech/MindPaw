@@ -139,7 +139,7 @@ MotionEmotion::MotionEmotion() {
 }
 
 // ==================== 关联舵机 ====================
-void MotionEmotion::attach(Servo& s1, Servo& s2, Servo& s3, Servo& s4) {
+void MotionEmotion::attach(MindPawServo& s1, MindPawServo& s2, MindPawServo& s3, MindPawServo& s4) {
     _s[0] = &s1; _s[1] = &s2; _s[2] = &s3; _s[3] = &s4;
     _attached = true;
 }

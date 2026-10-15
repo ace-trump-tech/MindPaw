@@ -50,13 +50,21 @@ bool HLKV20::begin(uint8_t rxPin, uint32_t baud) {
 
     // 创建 SoftwareSerial 实例 (仅接收, 不发送)
     // 使用动态分配避免在模块未用时占用内存
-    _serial = new SoftwareSerial(-1, rxPin, false);  // -1 = 不发送
+#if defined(ESP8266)
+    _serial = new SoftwareSerial(rxPin, -1, false); // RX first, no TX
+#else
+    _serial = new HardwareSerial(1);
+#endif
     if (!_serial) {
-        Serial.println("HLK-V20: Failed to create SoftwareSerial");
+        Serial.println("HLK-V20: Failed to create UART receiver");
         return false;
     }
 
+#if defined(ESP8266)
     _serial->begin(baud);
+#else
+    _serial->begin(baud, SERIAL_8N1, rxPin, -1);
+#endif
     _linePos = 0;
     _initialized = true;
 

@@ -74,9 +74,7 @@ bool StreamingReconClient::_postFrame(const uint8_t* jpegBytes, size_t jpegLen, 
     _http.begin(_tcpClient, url);
     _http.setTimeout(RECON_DEFAULT_TIMEOUT_MS);
     if (_token.length() > 0) {
-        _http.setAuthorization("Bearer " _token.c_str());
-        // 注: setAuthorization 接受 user/pass; 上面写法对 ESP8266HTTPClient
-        // 是合法构造；下面用 addHeader 更稳。
+        _http.addHeader("Authorization", "Bearer " + _token);
     }
     _http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
 
@@ -96,6 +94,7 @@ bool StreamingReconClient::_postControl(const char* path) {
     String url = _baseUrl + String(path);
     _http.begin(_tcpClient, url);
     _http.setTimeout(RECON_DEFAULT_TIMEOUT_MS);
+    if (_token.length() > 0) _http.addHeader("Authorization", "Bearer " + _token);
     int code = _http.POST("");
     _http.end();
     if (_debug) Serial.printf("RECON: POST %s -> HTTP %d\n", path, code);

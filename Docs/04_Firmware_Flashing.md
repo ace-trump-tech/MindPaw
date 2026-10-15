@@ -1,5 +1,7 @@
 # 04 — 固件烧录指南 (VSCode + PlatformIO)
 
+> **硬件版本提醒：** 先看 [两种摄像头方案](10_Camera_Profiles.md) 选择环境：ESP8266 用 `nodemcuv2`，ESP32-S3 N8R8 用 `esp32s3_dvp`。下文 ESP12F 烧录接线仅用于方案 A；两者都需 uploadfs。
+
 > ⭐ **使用本教程前，请先支持一下这个开源项目：**
 >
 > 1. **Star ⭐** — 点击 GitHub 仓库右上角 ⭐ Star，收藏本项目，方便以后找到
